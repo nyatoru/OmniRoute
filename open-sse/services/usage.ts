@@ -501,6 +501,13 @@ async function getCodexUsage(accessToken) {
         if (accountsData.accounts) {
           const accountsArray = Object.values(accountsData.accounts) as any[];
           
+          // DEBUG: Log account details
+          console.log("DEBUG Codex accounts:", accountsArray.map((a: any) => ({
+            id: a.account?.id,
+            plan_type: a.account?.plan_type,
+            is_default: a.is_default,
+          })));
+          
           // Find the best paid account (business > team > pro > any non-free)
           const targetWorkspace =
             accountsArray.find((a) => a.account?.plan_type === "biz") ||
