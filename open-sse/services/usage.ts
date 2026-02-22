@@ -487,6 +487,7 @@ async function getClaudeUsage(accessToken) {
 async function getCodexUsage(accessToken) {
   try {
     let accountId = null;
+    let selectedPlanType = null;
     try {
       const accountsRes = await fetch("https://chatgpt.com/backend-api/accounts/check/v4", {
         method: "GET",
@@ -499,13 +500,21 @@ async function getCodexUsage(accessToken) {
         const accountsData = await accountsRes.json();
         if (accountsData.accounts) {
           const accountsArray = Object.values(accountsData.accounts) as any[];
+          
+          // Find the best paid account (business > team > pro > any non-free)
           const targetWorkspace =
             accountsArray.find((a) => a.account?.plan_type === "biz") ||
+            accountsArray.find((a) => a.account?.plan_type === "team") ||
+            accountsArray.find((a) => a.account?.plan_type === "pro") ||
+            accountsArray.find((a) => a.account?.plan_type === "plus") ||
             accountsArray.find((a) => a.account?.plan_type !== "free") ||
             accountsArray.find((a) => a.is_default) ||
             accountsArray[0];
+          
           if (targetWorkspace && targetWorkspace.account?.id) {
             accountId = targetWorkspace.account.id;
+            // Store the plan_type from account selection for later use
+            selectedPlanType = targetWorkspace.account?.plan_type;
           }
         }
       }
@@ -545,8 +554,12 @@ async function getCodexUsage(accessToken) {
       secondaryWindow.reset_at ? secondaryWindow.reset_at * 1000 : null
     );
 
+    // Use plan_type from usage API response, fallback to account selection, then to "unknown"
+    // The usage API returns plan_type which indicates the actual subscription type
+    const planType = data.plan_type || selectedPlanType || "unknown";
+
     return {
-      plan: data.plan_type || "unknown",
+      plan: planType,
       limitReached: rateLimit.limit_reached || false,
       quotas: {
         session: {
